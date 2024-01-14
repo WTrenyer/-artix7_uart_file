@@ -2,10 +2,10 @@ module uart_rx(
     input   clk,rst_n,
     input   rx,
     output  [7:0]rx_data_out,
-    output  sign
+    output  reg rx_done
 );
 
-    //9600bps   4nsÿ��ֹͣ???
+    //9600bps   4nsÿ��ֹͣ???
 
 parameter clk_bps = 50_000_000;
 parameter clk_en  = (clk_bps*10)/9600;
@@ -18,7 +18,9 @@ reg en_bpss;
 integer cnt_bps;
 integer cnt_bit;
 reg half;
-always @(posedge clk or negedge rx_en) begin
+integer num_bit;
+reg rx_en;
+always @(posedge clk ) begin
     if(!rx_en) begin
         cnt_bps <= 0;
         bps_start <= 0;
@@ -56,24 +58,29 @@ always @(posedge clk) begin
 end
 
 
-reg rx_en;
+
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
         rx_en<=0;
+        rx_done<=0;
     end else if(!rx&rx_reg0)begin
         rx_en<=1;
-    end else    if(num_bit == 8 )
+    end else    if(num_bit == 8 )begin
         rx_en<=0;
+        rx_done<=1;
+    end else
+        rx_done<=0;
 
 end
 
 
-integer num_bit;
+
 reg [7:0] rx_data;
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         num_bit <= 0;
         rx_data<=0;
+
     end else if(rx_en) begin
         if(bit_start) begin
             case (num_bit)
@@ -84,14 +91,22 @@ always @(posedge clk or negedge rst_n) begin
                 4: rx_data[4] <= rx;
                 5: rx_data[5] <= rx;
                 6: rx_data[6] <= rx;
-                7: rx_data[7] <= rx;
+                7: begin 
+                    rx_data[7] <= rx;
+
+                end
 
             endcase
             num_bit <= num_bit + 1;
         end
-    end else
+    end else begin
+        rx_done<=0;
         num_bit <= 0;
+
+    end
 end
 assign rx_data_out = rx_data;
+
+
 
 endmodule
